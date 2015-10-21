@@ -8,6 +8,6 @@ setup(name='salt-vinegar',
       author_email='aurynn@eiara.nz',
       url='https://github.com/eiara/salt-vinegar/',
       packages=['vinegar'],
-      license="GPLv3",
+      license="MIT",
       data_files=[("bin",["vinegar"])]
      )
