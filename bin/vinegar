@@ -1,6 +1,6 @@
-#!/usr/local/bin/env python
+#!/usr/bin/env python
 
-from vinegar import commands
+from vinegar.commands import init
 
 if __name__ == '__main__':
-    commands.init()
+    init()

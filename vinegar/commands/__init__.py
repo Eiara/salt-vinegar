@@ -2,6 +2,7 @@ import click
 import os
 
 from  ..lib.version import VERSION
+# from . import base
 
 plugin_folder = os.path.join(os.path.dirname(__file__), 'plugins')
 

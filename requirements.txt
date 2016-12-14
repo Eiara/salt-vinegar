@@ -1,3 +1,0 @@
-click==5.1
-pyaml==15.8.2
-PyYAML==3.11

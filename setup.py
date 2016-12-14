@@ -7,7 +7,10 @@ setup(name='salt-vinegar',
       author='Aurynn Shaw',
       author_email='aurynn@eiara.nz',
       url='https://github.com/eiara/salt-vinegar/',
-      packages=['vinegar'],
+      packages=['vinegar', 
+            'vinegar.lib', 
+            'vinegar.commands', 
+            'vinegar.commands.plugins'],
       license="MIT",
-      data_files=[("bin",["vinegar"])]
+      data_files=[("bin", ["bin/vinegar"])]
      )

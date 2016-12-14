@@ -1,0 +1,5 @@
+click==6.6
+pyaml==16.12.2
+PyYAML==3.12
+six==1.10.0
+virtualenv==15.1.0

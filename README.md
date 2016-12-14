@@ -20,3 +20,13 @@ Currently only two functions are supported: initialising a localised `salt-ssh` 
 
 `vinegar ssh add <user>@<host> <name> --priv /path/to/private/key>`
   - Uses a SSH private key instead of password auth.
+
+## TODO
+
+`vinegar init [--path]`
+
+Create a new Saltstack repo in the specified path
+
+`vinegar ssh rm <user>@<host> <name>`
+
+Remove a host from salt-ssh

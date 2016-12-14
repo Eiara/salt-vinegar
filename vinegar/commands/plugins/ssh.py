@@ -1,6 +1,11 @@
 import os, sys, copy
 
-from urllib import parse
+import six
+
+if six.PY2:
+    import urlparse as parse
+elif six.PY34:
+    from urllib import parse
 
 import pyaml
 import click
@@ -88,7 +93,7 @@ def add(host, name, **kwargs):
     if kwargs.get("priv", None):
         path = os.path.abspath(kwargs["priv"])
         if not os.path.exists(path):
-            print("path %s does not exist".format(path))
+            print("path %(path)s does not exist".format(path))
             exit(1)
         dct["priv"] = path
 
@@ -101,7 +106,7 @@ def add(host, name, **kwargs):
     if os.path.exists(output):
         # read the file back in,
         with open(output) as fh:
-            final = pyaml.load(fh.read())
+            final = pyaml.yaml.load(fh.read())
     # set our name
     if final.get(name, None) is not None and not kwargs["force"]:
         print("remote {} already exists; maybe you meant `update`?".format(name))
@@ -114,13 +119,14 @@ def add(host, name, **kwargs):
 
 def _make_saltfile(cwd):
     with open(os.path.join(cwd, "Saltfile"), "w") as fh:
-        f = SALTFILE_DEFAULT.copy()
-        f["salt-ssh"]["config_dir"] = f["salt-ssh"]["config_dir"].format(path=cwd)
-        fh.write( pyaml.dump(f, indent=4) )
+        copied = SALTFILE_DEFAULT.copy()
+        copied["salt-ssh"]["config_dir"] = copied["salt-ssh"]["config_dir"].format(path=cwd)
+        fh.write( pyaml.dump(copied, indent=4) )
 
 def _write_default_master(cwd):
     with open(os.path.join(cwd, ".vinegar/master"), "w") as fh:
-        f = copy.deepcopy(MASTER_CONFIG_DEFAULT)
-        f["file_roots"]["base"] = [path.format(path=cwd) for path in f["file_roots"]["base"]]
-        f["pillar_roots"]["base"] = [path.format(path=cwd) for path in f["pillar_roots"]["base"]]
-        f["pki_dir"] = f["pki_dir"].format(path=cwd)
+        copied = copy.deepcopy(MASTER_CONFIG_DEFAULT)
+        copied["file_roots"]["base"] = [path.format(path=cwd) for path in copied["file_roots"]["base"]]
+        copied["pillar_roots"]["base"] = [path.format(path=cwd) for path in copied["pillar_roots"]["base"]]
+        copied["pki_dir"] = copied["pki_dir"].format(path=cwd)
+        fh.write( pyaml.dump(copied, indent=4) )
