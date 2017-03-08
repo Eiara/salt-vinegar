@@ -1,8 +1,12 @@
-from distutils.core import setup
-from vinegar.lib.version import VERSION
+from setuptools import setup, find_packages
+from os import path
+here = path.abspath(path.dirname(__file__))
+# from vinegar.lib.version import VERSION
 
 setup(name='salt-vinegar',
-      version=VERSION,
+      use_incremental=True,
+      setup_requires=["incremental"],
+      install_requires=["incremental"],
       description='salt-ssh cli management toolkit',
       author='Aurynn Shaw',
       author_email='aurynn@eiara.nz',
@@ -12,5 +16,8 @@ setup(name='salt-vinegar',
             'vinegar.commands', 
             'vinegar.commands.plugins'],
       license="MIT",
-      data_files=[("bin", ["bin/vinegar"])]
+      # data_files=[("bin", ["bin/vinegar"])]
+      entry_points = {
+          'console_scripts': ['vinegar=vinegar.command_line:main'],
+      }
      )

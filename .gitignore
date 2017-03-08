@@ -2,4 +2,4 @@
 .vinegar
 Saltfile
 .vscode
-build/
+/build

@@ -1,16 +1,13 @@
 import os, sys, copy
-
 import six
-
-if six.PY2:
-    import urlparse as parse
-elif six.PY34:
-    from urllib import parse
+from six.moves.urllib import parse
 
 import pyaml
 import click
 
-from vinegar import settings
+from .. import settings
+
+class FileNotFoundError(OSError): pass
 
 SALTFILE_DEFAULT = {
     "salt-ssh": {
@@ -32,8 +29,34 @@ MASTER_CONFIG_DEFAULT = {
             "{path}/srv/pillar"
         }
     },
-    "pki_dir": "{path}/.vinegar/keys"
+    "pki_dir": "{path}/.vinegar/keys",
+    "ssh_log_dir": "{path}/.vinegar/logs/ssh.log"
+
 }
+
+def get_fn(filename):
+    return os.path.join(os.getcwd(), settings.CONFIG_DIRECTORY, 
+    filename)
+
+def read_roster():
+    """Read the rosterfile"""
+    fn = get_fn("roster")
+    if not os.path.exists(fn):
+        raise FileNotFoundError("{} not found".format(fn))
+        # read the file back in,
+    roster = {}
+    with open(fn) as fh:
+        roster = pyaml.yaml.load(fh.read())
+    if roster is None:
+        roster = {}
+    return roster
+
+def write_roster(roster):
+    fn = get_fn("roster")
+    with open(fn,"w") as fh:
+        fh.write(pyaml.dump(roster, indent=4))
+
+# Create the click group to hold the cli command stuff
 
 @click.group()
 def cli():
@@ -48,20 +71,20 @@ def init(force):
 
     # creating the Saltfile
     if os.path.exists(os.path.join(cwd, "Saltfile")) and not force:
-        print("Saltfile exists in {}, aborting".format(cwd))
+        sys.stderr.write("Saltfile exists in {}, aborting\n".format(cwd))
         sys.exit(1)
 
     _make_saltfile(cwd)
 
     # Creating the vinegar directory
     if not os.path.exists(os.path.join(cwd, ".vinegar")):
-        os.mkdir(os.path.join(cwd, ".vinegar"))
+        os.makedirs(os.path.join(cwd, ".vinegar"))
 
     if not os.path.exists(os.path.join(cwd, ".vinegar", "keys")):
-        os.mkdir(os.path.join(cwd, ".vinegar", "keys"))
+        os.makedirs(os.path.join(cwd, ".vinegar", "keys"))
 
     if os.path.exists( os.path.join(cwd, "./vinegar", "master") ) and not force:
-        print("master config exists in {}, aborting".format(cwd))
+        sys.stderr.write("master config exists in {}, aborting\n".format(cwd))
 
     _write_default_master(cwd)
 
@@ -72,7 +95,7 @@ def init(force):
 @click.option("--user", type=str)
 @click.option("--password", type=str)
 @click.option("--ssh-key", type=click.File())
-def add(host, name, **kwargs):
+def add(host, name, user=None, priv=None, **kwargs):
     """adds a host to this salt-ssh environment"""
     cwd = os.getcwd()
 
@@ -83,7 +106,7 @@ def add(host, name, **kwargs):
     dct["host"] = url.hostname
 
     if not url.username and not kwargs.get("user", None):
-        print("WARN: no username/implict username will be used")
+        sys.stderr.write("WARN: no username/implict username will be used\n")
 
     if url.username:
         dct["user"] = url.username
@@ -93,33 +116,52 @@ def add(host, name, **kwargs):
     if kwargs.get("priv", None):
         path = os.path.abspath(kwargs["priv"])
         if not os.path.exists(path):
-            print("path %(path)s does not exist".format(path))
-            exit(1)
+            sys.stderr.write("path %(path)s does not exist".format(path))
+            sys.exit(1)
         dct["priv"] = path
 
     if kwargs.get("password", None):
-        dct["passwd"] = kwargs["passwd"]
+        dct["passwd"] = kwargs["password"]
 
-    output = os.path.join(cwd, ".vinegar", "roster")
+    roster = read_roster()
 
-    final = {}
-    if os.path.exists(output):
-        # read the file back in,
-        with open(output) as fh:
-            final = pyaml.yaml.load(fh.read())
-    # set our name
-    if final.get(name, None) is not None and not kwargs["force"]:
-        print("remote {} already exists; maybe you meant `update`?".format(name))
+    if roster.get(name, None) is not None and not kwargs["force"]:
+        sys.stderr.write("remote {} already exists; maybe you meant `update`?".format(name))
         sys.exit(1)
-    final[name] = dct
+    roster[name] = dct
+    write_roster(roster)
     # and write it out
-    with open(output, "w+") as fh:
-        fh.write( pyaml.dump(final, indent=4) )
 
+@cli.command()
+@click.argument("name")
+def rm(name):
+    """
+    Removes a named SSH target
+    """
+    roster = read_roster()
+    if not name in roster:
+        sys.stderr.write("{} not in roster")
+        sys.exit(1)
+    del roster[name]
+    write_roster(roster)
+    
+
+@cli.command()
+def list():
+    roster = read_roster()
+    for name, vals in roster.items():
+        print("{name}:".format(name=name))
+        print("\t {user}@{host}".format(**vals))
+        if vals.get("passwd"):
+            print("\t password auth")
+        elif vals.get("ssh-priv"):
+            print("\t key auth")
+        else:
+            print("\t no auth")
 
 def _make_saltfile(cwd):
     with open(os.path.join(cwd, "Saltfile"), "w") as fh:
-        copied = SALTFILE_DEFAULT.copy()
+        copied = copy.deepcopy(SALTFILE_DEFAULT)
         copied["salt-ssh"]["config_dir"] = copied["salt-ssh"]["config_dir"].format(path=cwd)
         fh.write( pyaml.dump(copied, indent=4) )
 
